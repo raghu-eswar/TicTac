@@ -35,10 +35,21 @@ function assigneeSymbolAndStart() {
         syatemSymbol=o;
         echo "it's your turn";
         echo "you are playing with 'x'";
-        echo "enter 1 to 9 to select respective place";
+        displayBoard;
+        userTurn;
     fi
 }
 
+# takes user move and starts
+function userTurn() {
+    echo "enter 1 to 9 to select respective place";read userMove;
+    if (( $userMove < 1 || $userMove > 9)); then
+        userTurn;
+        return;
+    fi
+    board[$userMove]=$userSymbol;
+    displayBoard;
+}
+
 resetBoard;
-displayBoard;
 assigneeSymbolAndStart;
