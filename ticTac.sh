@@ -22,19 +22,23 @@ function displayBoard() {
     done
 }
 
-function assigneeSymbol() {
-    temp=$(( RANDOM % 2));
-    if (( $temp == 0)); then
+# assignee symboles ans starts game
+function assigneeSymbolAndStart() {
+    toss=$(( RANDOM % 2));
+    if (( $toss == 0)); then
         userSymbol=o;
         syatemSymbol=x;
-        echo "you arre playing with 'o'";
+        echo "it's my turn";
+        echo "you are playing with 'o'";
     else
         userSymbol=x;
         syatemSymbol=o;
-        echo "you arre playing with 'x'";
+        echo "it's your turn";
+        echo "you are playing with 'x'";
+        echo "enter 1 to 9 to select respective place";
     fi
 }
 
 resetBoard;
 displayBoard;
-assigneeSymbol;
+assigneeSymbolAndStart;
