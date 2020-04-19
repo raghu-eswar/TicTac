@@ -77,13 +77,20 @@ function systemTurn() {
             upDateMove $blockingMove;
             board[$blockingMove]=$systemSymbol;
         else
-            temp=$(( ( RANDOM % 9 )  + 1 ));
-            upDateMove $temp;
-            if (( $? == 1 )); then
-                board[$temp]=$systemSymbol;
+            getCornerMove;
+            systemMove=$?;
+            if (( $systemMove  != 0 )); then
+                updateMove $systemMove;
+                board[$systemMove]=$systemSymbol;
             else
-                systemTurn;
-                return;
+                temp=$(( ( RANDOM % 9 )  + 1 ));
+                upDateMove $temp;
+                if (( $? == 1 )); then
+                    board[$temp]=$systemSymbol;
+                else
+                    systemTurn;
+                    return;
+                fi
             fi
         fi
     fi
@@ -275,6 +282,35 @@ function getCrossWinningPattern() {
         return $position;
     else
         return 0;
+    fi
+}
+
+function getCornerMove()  {
+    move=0;
+    tempMove=0;
+    for (( i=1; i<=9; i=$(( $i + 2)) ))
+    do
+        if (( $i == 5 )); then
+            continue;
+        fi
+        if [[ ${board[$i]} == "-" ]];then
+            tempMove=$i;
+            case $i in
+                1)
+                    if [[ ${board[9]} != "-" ]]; then
+                        move=$i;
+                    fi ;;
+                3)
+                    if [[ ${board[7]} != "-" ]]; then
+                        move=$i;
+                    fi ;;
+            esac 
+        fi
+    done
+    if (( $move != 0 ));then
+        return $move;
+    else
+        return $tempMove;
     fi
 }
 
