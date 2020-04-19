@@ -66,18 +66,25 @@ function userTurn() {
 }
 
 function systemTurn() {
-    getWinningMove;
+    getWinningMove $systemSymbol;
     winningMove=$?;
     if (( $winningMove != 0)); then
         board[$winningMove]=$systemSymbol;
     else
-        temp=$(( ( RANDOM % 9 )  + 1 ));
-        upDateMove $temp;
-        if (( $? == 1 )); then
-            board[$temp]=$systemSymbol;
+        getWinningMove $userSymbol;
+        blockingMove=$?;
+        if (( $blockingMove != 0)); then
+            upDateMove $blockingMove;
+            board[$blockingMove]=$systemSymbol;
         else
-            systemTurn;
-            return;
+            temp=$(( ( RANDOM % 9 )  + 1 ));
+            upDateMove $temp;
+            if (( $? == 1 )); then
+                board[$temp]=$systemSymbol;
+            else
+                systemTurn;
+                return;
+            fi
         fi
     fi
     checkGameStatus $systemSymbol;
@@ -181,15 +188,16 @@ function checkGameStatus() {
 }
 
 function checkWinningMove() {
-    position=$1;
+    checkingSymbol=$1;
+    position=$2;
     winningMove=0;
-    getRowWinningPattern  $position;
+    getRowWinningPattern $checkingSymbol $position;
     winningMove=$?;
     if (( $winningMove == 0 )); then    
-        getColumnWinningPattern $position;
+        getColumnWinningPattern $checkingSymbol $position;
         winningMove=$?;
         if (( $winningMove == 0 )); then   
-            getCrossWinningPattern $position;
+            getCrossWinningPattern $checkingSymbol $position;
             winningMove=$?;
             if (( $winningMove == 0 )); then  
                 return 0;
@@ -205,10 +213,11 @@ function checkWinningMove() {
 }
 
 function getWinningMove() {
+    checkingSymbol=$1;
     for (( i=1; i<=7; i++))
     do
     temp=0;
-        checkWinningMove $i;
+        checkWinningMove $checkingSymbol $i;
         temp=$?;
         if (( $temp != 0)); then
             return $temp;
@@ -220,13 +229,14 @@ function getWinningMove() {
 }
 
 function getRowWinningPattern() {
-    position=$1;
+    checkingSymbol=$1;
+    position=$2;
     if (( $position == 1 || $position == 4 ||$position == 7)); then
-        if [[ $systemSymbol == ${board[$position]} && $systemSymbol == ${board[$(($position + 1))]} && "-" == ${board[$(($position + 2))]} ]]; then
+        if [[ $checkingSymbol == ${board[$position]} && $checkingSymbol == ${board[$(($position + 1))]} && "-" == ${board[$(($position + 2))]} ]]; then
             return $(($position + 2));
-        elif [[ $systemSymbol == ${board[$position]} && "-" == ${board[$(($position + 1))]} && $systemSymbol == ${board[$(($position + 2))]} ]]; then
+        elif [[ $checkingSymbol == ${board[$position]} && "-" == ${board[$(($position + 1))]} && $checkingSymbol == ${board[$(($position + 2))]} ]]; then
             return $(($position + 1));
-        elif [[ "-" == ${board[$position]} && $systemSymbol == ${board[$(($position + 1))]} && $systemSymbol == ${board[$(($position + 2))]} ]]; then
+        elif [[ "-" == ${board[$position]} && $checkingSymbol == ${board[$(($position + 1))]} && $checkingSymbol == ${board[$(($position + 2))]} ]]; then
             return $position;
         else
             return 0;
@@ -235,13 +245,14 @@ function getRowWinningPattern() {
 }
 
 function getColumnWinningPattern() {
-    position=$1;
+    checkingSymbol=$1;
+    position=$2;
     if (( $position == 1 || $position == 2 ||$position == 3)); then
-        if [[ $systemSymbol == ${board[$position]} && $systemSymbol == ${board[$(($position + 3))]} && "-" == ${board[$(($position + 6))]} ]]; then
+        if [[ $checkingSymbol == ${board[$position]} && $checkingSymbol == ${board[$(($position + 3))]} && "-" == ${board[$(($position + 6))]} ]]; then
             return $(($position + 6));
-        elif [[ $systemSymbol == ${board[$position]} && "-" == ${board[$(($position + 3))]} && $systemSymbol == ${board[$(($position + 6))]} ]]; then
+        elif [[ $checkingSymbol == ${board[$position]} && "-" == ${board[$(($position + 3))]} && $checkingSymbol == ${board[$(($position + 6))]} ]]; then
             return $(($position + 3));
-        elif [[ "-" == ${board[$position]} && $systemSymbol == ${board[$(($position + 3))]} && $systemSymbol == ${board[$(($position + 6))]} ]]; then
+        elif [[ "-" == ${board[$position]} && $checkingSymbol == ${board[$(($position + 3))]} && $checkingSymbol == ${board[$(($position + 6))]} ]]; then
             return $position;
         else
             return 0;
@@ -250,16 +261,17 @@ function getColumnWinningPattern() {
 }
 
 function getCrossWinningPattern() {
-    position=$1;
+    checkingSymbol=$1;
+    position=$2;
     increment=4;
     if (( $position == 3)); then
         increment=2;
     fi
-    if [[ $systemSymbol == ${board[$position]} && $systemSymbol == ${board[$(($position + $increment))]} && "-" == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
+    if [[ $checkingSymbol == ${board[$position]} && $checkingSymbol == ${board[$(($position + $increment))]} && "-" == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
         return $(($position + $((2 * $increment)) ));
-    elif [[ $systemSymbol == ${board[$position]} && "-" == ${board[$(($position + $increment))]} && $systemSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
+    elif [[ $checkingSymbol == ${board[$position]} && "-" == ${board[$(($position + $increment))]} && $checkingSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
         return $(($position + $increment));
-    elif [[ "-" == ${board[$position]} && $systemSymbol == ${board[$(($position + $increment))]} && $systemSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
+    elif [[ "-" == ${board[$position]} && $checkingSymbol == ${board[$(($position + $increment))]} && $checkingSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
         return $position;
     else
         return 0;
