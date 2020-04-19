@@ -47,7 +47,7 @@ function assignSymbolAndStart() {
 function userTurn() {
     echo "valid moves ${validMoves[@]}";
     echo "enter valid move";read userMove;
-    upDateMove $userMove;
+    updateMove $userMove;
     if (( $? == 1 )); then
         board[$userMove]=$userSymbol;
         displayBoard;
@@ -74,7 +74,7 @@ function systemTurn() {
         getWinningMove $userSymbol;
         blockingMove=$?;
         if (( $blockingMove != 0)); then
-            upDateMove $blockingMove;
+            updateMove $blockingMove;
             board[$blockingMove]=$systemSymbol;
         else
             getCornerMove;
@@ -83,13 +83,18 @@ function systemTurn() {
                 updateMove $systemMove;
                 board[$systemMove]=$systemSymbol;
             else
-                temp=$(( ( RANDOM % 9 )  + 1 ));
-                upDateMove $temp;
-                if (( $? == 1 )); then
-                    board[$temp]=$systemSymbol;
+                updateMove 5;
+                if (($? == 1 )); then
+                    board[5]=$systemSymbol;
                 else
-                    systemTurn;
-                    return;
+                    temp=$(( ( RANDOM % 9 )  + 1 ));
+                    updateMove $temp;
+                    if (( $? == 1 )); then
+                        board[$temp]=$systemSymbol;
+                    else
+                        systemTurn;
+                        return;
+                    fi
                 fi
             fi
         fi
@@ -105,7 +110,7 @@ function systemTurn() {
 }
 
 # validate move and updates it in validMoves
-function upDateMove() {
+function updateMove() {
     move=$1;
     if [[ -z "${validMoves[$move]}" ]]; then 
         return 0;
@@ -290,20 +295,14 @@ function getCornerMove()  {
     tempMove=0;
     for (( i=1; i<=9; i=$(( $i + 2)) ))
     do
-        if (( $i == 5 )); then
-            continue;
-        fi
+        if (( $i == 5 )); then continue; fi
         if [[ ${board[$i]} == "-" ]];then
             tempMove=$i;
             case $i in
                 1)
-                    if [[ ${board[9]} != "-" ]]; then
-                        move=$i;
-                    fi ;;
+                    if [[ ${board[9]} != "-" ]]; then move=$i; fi ;;
                 3)
-                    if [[ ${board[7]} != "-" ]]; then
-                        move=$i;
-                    fi ;;
+                    if [[ ${board[7]} != "-" ]]; then move=$i; fi ;;
             esac 
         fi
     done
