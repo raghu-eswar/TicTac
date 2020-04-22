@@ -4,28 +4,27 @@ declare board;
 declare validMoves;
 userSymbol="-";
 systemSymbol="-";
+echo "enter board size";read boardSize;
 
-# resets the board to inetial stage
+# reset the board to initial stage
 function resetBoard() {
-    for (( counter=1; counter<=9; counter++))
+    for (( counter=1; counter<=$(($boardSize * $boardSize )); counter++))
     do
         board[$counter]="-";
         validMoves[$counter]=$counter;
     done  
 }  
-
 # display the board on console
 function displayBoard() {
-    for (( counter=1; counter<=9; counter++))
+    for (( counter=1; counter<=$(($boardSize * $boardSize )); counter++))
     do
         printf " ${board[$counter]}";
-        if (( $counter % 3 == 0)); then
+        if (( $counter % $boardSize == 0)); then
             printf "\n";
         fi
     done
 }
-
-# assignee symbols ans starts game
+# assign symbols and starts game
 function assignSymbolAndStart() {
     toss=$(( RANDOM % 2));
     if (( $toss == 0)); then
@@ -42,8 +41,7 @@ function assignSymbolAndStart() {
         userTurn;
     fi
 }
-
-# takes user move and validate and starts
+# takes user move and make user move
 function userTurn() {
     echo "valid moves ${validMoves[@]}";
     echo "enter valid move";read userMove;
@@ -52,73 +50,60 @@ function userTurn() {
         board[$userMove]=$userSymbol;
         displayBoard;
         checkGameStatus $userSymbol;
-        if (( $? == 1)); then
-            echo "game over";
+        gameStatus=$?;
+
+        if (( $gameStatus == 1)); then
+            echo "game over and you won ";
+            displayBoard;
+        elif (( $gameStatus == 2 )); then
+            echo "game over and it is tie ";
             displayBoard;
         else
-            echo "it's my turn";
+            echo "it's system turn";
             systemTurn;
         fi
     else
+        echo " $userMove is not a valid move please enter vaild move";
         userTurn;
         return;
     fi
 }
-
-# check for winning and blocking move if not makes optimal move possible
+# uses functions and make optimal move possible
 function systemTurn() {
-    getWinningMove $systemSymbol;
-    winningMove=$?;
-    if (( $winningMove != 0)); then
-        board[$winningMove]=$systemSymbol;
-    else
-        getWinningMove $userSymbol;
-        blockingMove=$?;
-        if (( $blockingMove != 0)); then
-            updateMove $blockingMove;
-            board[$blockingMove]=$systemSymbol;
-        else
+    getWinningMove $systemSymbol 1;
+    systemMove=$?;
+    if (( $systemMove == 0)); then
+        getWinningMove $userSymbol 1;
+        systemMove=$?;
+        if (( $systemMove == 0)); then
             getCornerMove;
             systemMove=$?;
-            if (( $systemMove  != 0 )); then
-                updateMove $systemMove;
-                board[$systemMove]=$systemSymbol;
-            else
-                updateMove 5;
-                if (($? == 1 )); then
-                    board[5]=$systemSymbol;
-                else
-                    getSideMove;
+            if (( $systemMove  == 0 )); then
+                getOptimalMove;
+                systemMove=$?;
+                if (( $systemMove  == 0 )); then
+                    getRandomMove;
                     systemMove=$?;
-                    if (( $systemMove  != 0 )); then
-                        updateMove $systemMove;
-                        board[$systemMove]=$systemSymbol;
-                    else
-                        temp=$(( ( RANDOM % 9 )  + 1 ));
-                        updateMove $temp;
-                        if (( $? == 1 )); then
-                            board[$temp]=$systemSymbol;
-                        else
-                            systemTurn;
-                            return;
-                        fi
-                    fi
                 fi
             fi
         fi
     fi
+    updateMove $systemMove;
+    board[$systemMove]=$systemSymbol;
     checkGameStatus $systemSymbol;
-    if (( $? == 1)); then
-        echo "game over";
+    gameStatus=$?;
+    if (( $gameStatus == 1)); then
+        echo "game over and system won ";
+        displayBoard;
+    elif (( $gameStatus == 2 )); then
+        echo "game over and it is tie ";
         displayBoard;
     else
         displayBoard;
         userTurn;
     fi
 }
-
-# validate move and updates it in validMoves
-# returns 1 if successful 0 if failed
+# validate move and update it in validMoves
 function updateMove() {
     move=$1;
     if [[ -z "${validMoves[$move]}" ]]; then 
@@ -128,241 +113,197 @@ function updateMove() {
         return 1;
     fi
 }
-
-# checks if player won the game or not by given symbol
-# returns 1 if game over and 0 if not completed
+# checks game status and returns 1 if won and return 2 if it is tie 
 function checkGameStatus() {
     symbole=$1;
-    for (( i=1; i<=7; i++))
-    do
-        if [[ ${board[$i]} == $symbole ]]; then
-            checkWinningPattern $symbole $i;
-            if (( $? == 1)); then
-                return 1;
-            fi
-        fi
-        if (( $i == 4)); then
-            i=$(($i+2));
-        fi   
-    done
+    temp=$(( (( $boardSize * $(( $boardSize - 1 )) )) + 1 ));
     if (( ${#validMoves[@]} == 0 )); then 
-        return 1;
-    fi
-    return 0;
-}
-
-# checks all possibilities to find winning pattern like x x x or o o o 
-# returns 1 if pattern found and 0 if not
-function checkWinningPattern() {
-    checkingSymbol=$1;
-    position=$2;
-    checkRowPattern $checkingSymbol $position;
-    if (( $? == 0 )); then    
-        checkColumnPattern $checkingSymbol $position;
-        if (( $? == 0 )); then   
-            checkCrossPattern $checkingSymbol $position;
-            if (( $? == 0 )); then  
-                return 0;
-            else
-                return 1;
-            fi 
-        else
-            return 1;
-        fi 
+        return 2;
     else
-        return 1;
+        for (( i=1; i<=$temp; i++))
+        do
+            if [[ ${board[$i]} == $symbole ]]; then
+                checkWinningMove $symbole $i 0;
+                value=$?;
+                if (( $value != 255)); then
+                    return 1;
+                fi
+            fi
+            if (( $i != 1 && $i % $boardSize == 1 )); then
+                i=$(($i+$(( $boardSize - 1)) ));
+            fi   
+        done 
     fi
 }
-
-# checks all possibilities to find winning pattern in given row like x x x or o o o
-# returns 1 if pattern found and 0 if not
-function checkRowPattern() {
-    checkingSymbol=$1;
-    position=$2
-    if (( $position == 1 || $position == 4 ||$position == 7)); then
-        if [[ $checkingSymbol == ${board[$(($position + 1))]} && $checkingSymbol == ${board[$(($position + 2))]} ]]; then
-            return 1;
-        else
-            return 0;
-        fi
-    else
-        return 0;
-    fi
-}
-
-# checks all possibilities to find winning pattern in given column like x x x or o o o
-# returns 1 if pattern found and 0 if not
-function checkColumnPattern() {
-    checkingSymbol=$1;
-    position=$2
-    if [[ $checkingSymbol == ${board[$(($position + 3))]} && $checkingSymbol == ${board[$(($position + 6))]} ]]; then
-        return 1;
-    else
-        return 0;
-    fi
-}
-
-# checks all possibilities to find winning pattern in cross direction like x x x or o o o
-# returns 1 if pattern found and 0 if not
-function checkCrossPattern() {
-    checkingSymbol=$1;
-    position=$2;
-    increment=4;
-    if (( $position == 3)); then
-        increment=2;
-    fi
-    if [[ $checkingSymbol == ${board[$(($position + $increment))]} && $checkingSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
-        return 1;
-    else
-        return 0;
-    fi
-}
-
-# checks all possibilities for winning in board based on symbol and position given
-# returns position if found and 0 if not
+# returns possible winning move for given data
 function getWinningMove() {
     checkingSymbol=$1;
-    for (( i=1; i<=7; i++))
+    numberOfMoves=$2;
+    temp=$(( (( $boardSize * $(( $boardSize - 1 )) )) + 1 ));
+    for (( i=1; i<=$temp; i++))
     do
-    temp=0;
-        checkWinningMove $checkingSymbol $i;
-        temp=$?;
-        if (( $temp != 0)); then
-            return $temp;
+        checkWinningMove $checkingSymbol $i $numberOfMoves;
+        winningMove=$?;
+        if (( $winningMove != 0 && $winningMove != 255)); then
+            return $winningMove;
         fi
-        if (( $i == 4)); then
-            i=$(($i+2));
+        if (( $i != 1 && $i % $boardSize == 1 )); then
+            i=$(($i+$(( $boardSize - 1)) ));
         fi   
     done
 }
-
-# checks all possibilities for winning for given position based on symbol
-# returns position if found and 0 if not
+# checks for possible winning move for given data
 function checkWinningMove() {
     checkingSymbol=$1;
     position=$2;
+    numberOfMoves=$3;
     winningMove=0;
-    getRowWinningPattern $checkingSymbol $position;
+    getRowWinningPattern $checkingSymbol $position $numberOfMoves;
     winningMove=$?;
-    if (( $winningMove == 0 )); then    
-        getColumnWinningPattern $checkingSymbol $position;
+    if (( $winningMove == 255)); then    
+        getColumnWinningPattern $checkingSymbol $position $numberOfMoves;
         winningMove=$?;
-        if (( $winningMove == 0 )); then   
-            getCrossWinningPattern $checkingSymbol $position;
+        if (($winningMove == 255)); then   
+            getCrossWinningPattern $checkingSymbol $position $numberOfMoves;
             winningMove=$?;
-            if (( $winningMove == 0 )); then  
-                return 0;
-            else
-                return $winningMove;
-            fi 
-        else
-            return $winningMove;
         fi 
-    else
-        return $winningMove;
     fi
+    return $winningMove;
 }
-
-# checks all possibilities for winning in given row based on symbol
-# returns position if found and 0 if not
+# checks and returns vertical winning pattern
 function getRowWinningPattern() {
     checkingSymbol=$1;
-    position=$2;
-    if (( $position == 1 || $position == 4 ||$position == 7)); then
-        if [[ $checkingSymbol == ${board[$position]} && $checkingSymbol == ${board[$(($position + 1))]} && "-" == ${board[$(($position + 2))]} ]]; then
-            return $(($position + 2));
-        elif [[ $checkingSymbol == ${board[$position]} && "-" == ${board[$(($position + 1))]} && $checkingSymbol == ${board[$(($position + 2))]} ]]; then
-            return $(($position + 1));
-        elif [[ "-" == ${board[$position]} && $checkingSymbol == ${board[$(($position + 1))]} && $checkingSymbol == ${board[$(($position + 2))]} ]]; then
-            return $position;
+    checkingPosition=$2
+    numberOfMoves=$3;
+    symbolCount=0;
+    emptyPlaceCount=0;
+    emptyPlace=0;
+    if (( $checkingPosition % $boardSize == 1)); then
+        for ((ir=1; ir<=$boardSize; ir++))
+        do
+            if [[ $checkingSymbol == ${board[$checkingPosition]} ]]; then ((symbolCount++)); fi;
+            if [[ "-" == ${board[$checkingPosition]} ]]; then 
+                ((emptyPlaceCount++)); 
+                emptyPlace=$checkingPosition;
+            fi;
+            ((checkingPosition++));
+        done
+        if (( $symbolCount == $(($boardSize - $numberOfMoves )) && $emptyPlaceCount == $numberOfMoves )); then
+            return $emptyPlace;
         else
-            return 0;
+            return -1;
         fi
     fi
+    return -1;
 }
-
-# checks all possibilities for winning in given column based on symbol
-# returns position if found and 0 if not
+# checks and returns horizontal winning pattern
 function getColumnWinningPattern() {
     checkingSymbol=$1;
-    position=$2;
-    if (( $position == 1 || $position == 2 ||$position == 3)); then
-        if [[ $checkingSymbol == ${board[$position]} && $checkingSymbol == ${board[$(($position + 3))]} && "-" == ${board[$(($position + 6))]} ]]; then
-            return $(($position + 6));
-        elif [[ $checkingSymbol == ${board[$position]} && "-" == ${board[$(($position + 3))]} && $checkingSymbol == ${board[$(($position + 6))]} ]]; then
-            return $(($position + 3));
-        elif [[ "-" == ${board[$position]} && $checkingSymbol == ${board[$(($position + 3))]} && $checkingSymbol == ${board[$(($position + 6))]} ]]; then
-            return $position;
+    checkingPosition=$2
+    numberOfMoves=$3;
+    symbolCount=0;
+    emptyPlaceCount=0;
+    emptyPlace=0;
+    if (( $checkingPosition <= $boardSize )); then
+        for (( ic=1; ic<=$boardSize; ic++))
+        do
+            if [[ $checkingSymbol == ${board[$checkingPosition]} ]]; then ((symbolCount++)); fi;
+            if [[ "-" == ${board[$checkingPosition]} ]]; then 
+                ((emptyPlaceCount++)); 
+                emptyPlace=$checkingPosition;
+            fi;
+            checkingPosition=$(( $checkingPosition + $boardSize));
+        done
+        if (( $symbolCount == $(($boardSize - $numberOfMoves)) && $emptyPlaceCount == $numberOfMoves )); then
+            return $emptyPlace;
         else
-            return 0;
+            return -1;
         fi
     fi
+    return -1;
 }
-
-# checks all possibilities for winning in cross direction based on symbol
-# returns position if found and 0 if not
+# checks and returns the cross winning pattern
 function getCrossWinningPattern() {
     checkingSymbol=$1;
-    position=$2;
-    increment=4;
-    if (( $position == 3)); then
-        increment=2;
+    checkingPosition=$2;
+    numberOfMoves=$3;
+    increment=$(( $boardSize + 1 ));
+    symbolCount=0;
+    emptyPlaceCount=0;
+    emptyPlace=0;
+    if (( $checkingPosition == $boardSize)); then
+        increment=$(( $boardSize - 1 ));
     fi
-    if [[ $checkingSymbol == ${board[$position]} && $checkingSymbol == ${board[$(($position + $increment))]} && "-" == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
-        return $(($position + $((2 * $increment)) ));
-    elif [[ $checkingSymbol == ${board[$position]} && "-" == ${board[$(($position + $increment))]} && $checkingSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
-        return $(($position + $increment));
-    elif [[ "-" == ${board[$position]} && $checkingSymbol == ${board[$(($position + $increment))]} && $checkingSymbol == ${board[$(($position + $((2 * $increment)) ))]} ]]; then
-        return $position;
+
+    for (( icr=1; icr<=$boardSize; icr++))
+    do
+        if [[ $checkingSymbol == ${board[$checkingPosition]} ]]; then ((symbolCount++)); fi;
+        if [[ "-" == ${board[$checkingPosition]} ]]; then 
+            ((emptyPlaceCount++)); 
+            emptyPlace=$checkingPosition;
+        fi;
+        checkingPosition=$(( $checkingPosition + $increment));
+    done
+    if (( $symbolCount == $(($boardSize - $numberOfMoves)) && $emptyPlaceCount == $numberOfMoves )); then
+        return $emptyPlace;
     else
-        return 0;
+            return -1;
     fi
 }
-
-# returns optimal corner move possible if not possible returns 0
+# returns optimal corner move possible
 function getCornerMove()  {
-    move=0;
-    tempMove=0;
-    for (( i=1; i<=9; i=$(( $i + 2)) ))
+    cornerMove=0;
+    tempCornerMove=0;
+    for (( i=1; i<=$(( $boardSize * $boardSize)); i=$(( $i + $(( $boardSize - 1)) )) ))
     do
-        if (( $i == 5 )); then continue; fi
         if [[ ${board[$i]} == "-" ]];then
-            tempMove=$i;
+            tempCornerMove=$i;
             case $i in
                 1)
-                    if [[ ${board[9]} != "-" ]]; then move=$i; fi ;;
-                3)
-                    if [[ ${board[7]} != "-" ]]; then move=$i; fi ;;
+                    if [[ ${board[$(( $boardSize * $boardSize))]} != "-" ]]; then
+                        cornerMove=$i;
+                    fi ;;
+                $boardSize)
+                    if [[ ${board[$(( $(( $i * $i)) - $(( $i - 1)) ))]} != "-" ]]; then
+                        cornerMove=$i;
+                    fi ;;
             esac 
         fi
+        if (( $i == $boardSize)); then
+            i=$(( $(( $i * $i)) - $(( $(( $i - 1))  * 2 )) ));
+        fi
     done
-    if (( $move != 0 ));then
-        return $move;
+    if (( $cornerMove != 0 ));then
+        return $cornerMove;
     else
-        return $tempMove;
+        return $tempCornerMove;
     fi
 }
-
-# returns optimal side move possible if not possible returns 0
-function getSideMove() {
+# returns the optimal move possible
+function getOptimalMove() {
     move=0;
-    tempMove=0;
-    for (( i=2; i<=8; i=$(( $i + 2)) ))
+    for (( io=2; io<=$(( $boardSize - 1 )); io++ ))
     do
-        if [[ ${board[$i]} == "-" ]];then
-            tempMove=$i;
-            case $i in
-                2)
-                    if [[ ${board[8]} == "-" ]]; then move=$i; fi ;;
-                4)
-                    if [[ ${board[6]} == "-" ]]; then move=$i; fi ;;
-            esac 
-        fi
+        getWinningMove $systemSymbol $io;
+        move=$?;
+        if (( $move == 0)); then
+            getWinningMove $userSymbol $io;
+            move=$?;
+        fi  
+        if (( $move != 0)); then
+            return $move;
+        fi  
     done
-    if (( $move != 0 ));then
-        return $move;
+}
+# returns random valid move
+function getRandomMove() {
+    max=$(( $boardSize * $boardSize));
+    randomMove=$(( ( RANDOM % $max )  + 1 ))
+    updateMove $randomMove;
+    if (( $? !=0 ));then
+        return $randomMove;
     else
-        return $tempMove;
+        getRandomMove;
     fi
 }
 
