@@ -31,6 +31,7 @@ function assignSymbolAndStart() {
         userSymbol="o";
         systemSymbol="x";
         echo "you are playing with 'o'";
+        displayBoard;
         systemTurn;
     else
         userSymbol="x";
@@ -41,10 +42,12 @@ function assignSymbolAndStart() {
         userTurn;
     fi
 }
-# takes user move and make user move
+# takes users choice and places on the board
 function userTurn() {
-    echo "valid moves ${validMoves[@]}";
-    echo "enter valid move";read userMove;
+    echo "it's your turn";
+    echo "enter your valid move";
+    echo "your valid moves ${validMoves[@]}";
+    read userMove;
     updateMove $userMove;
     if (( $? == 1 )); then
         board[$userMove]=$userSymbol;
@@ -59,7 +62,6 @@ function userTurn() {
             echo "game over and it is tie ";
             displayBoard;
         else
-            echo "it's system turn";
             systemTurn;
         fi
     else
@@ -68,8 +70,10 @@ function userTurn() {
         return;
     fi
 }
-# uses functions and make optimal move possible
+
+# identifies optimal system move
 function systemTurn() {
+    echo "it's system turn";
     getWinningMove $systemSymbol 1;
     systemMove=$?;
     if (( $systemMove == 0)); then
@@ -103,7 +107,9 @@ function systemTurn() {
         userTurn;
     fi
 }
+
 # validate move and update it in validMoves
+# checks availability of user's choice and updates
 function updateMove() {
     move=$1;
     if [[ -z "${validMoves[$move]}" ]]; then 
@@ -117,22 +123,21 @@ function updateMove() {
 function checkGameStatus() {
     symbole=$1;
     temp=$(( (( $boardSize * $(( $boardSize - 1 )) )) + 1 ));
+    for (( i=1; i<=$temp; i++))
+    do
+        if [[ ${board[$i]} == $symbole ]]; then
+            checkWinningMove $symbole $i 0;
+            value=$?;
+            if (( $value != 255)); then
+                return 1;
+            fi
+        fi
+        if (( $i != 1 && $i % $boardSize == 1 )); then
+            i=$(($i+$(( $boardSize - 1)) ));
+        fi   
+    done 
     if (( ${#validMoves[@]} == 0 )); then 
         return 2;
-    else
-        for (( i=1; i<=$temp; i++))
-        do
-            if [[ ${board[$i]} == $symbole ]]; then
-                checkWinningMove $symbole $i 0;
-                value=$?;
-                if (( $value != 255)); then
-                    return 1;
-                fi
-            fi
-            if (( $i != 1 && $i % $boardSize == 1 )); then
-                i=$(($i+$(( $boardSize - 1)) ));
-            fi   
-        done 
     fi
 }
 # returns possible winning move for given data
@@ -152,7 +157,7 @@ function getWinningMove() {
         fi   
     done
 }
-# checks for possible winning move for given data
+# checks for winning possibility
 function checkWinningMove() {
     checkingSymbol=$1;
     position=$2;
@@ -279,7 +284,7 @@ function getCornerMove()  {
         return $tempCornerMove;
     fi
 }
-# returns the optimal move possible
+# returns the optimal system move
 function getOptimalMove() {
     move=0;
     for (( io=2; io<=$(( $boardSize - 1 )); io++ ))
